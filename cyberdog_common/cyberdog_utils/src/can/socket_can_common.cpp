@@ -17,26 +17,22 @@
 #include "cyberdog_utils/can/socket_can_common.hpp"
 
 #include <fcntl.h>
-#include <net/if.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <sys/ioctl.h>
-#include <linux/can/raw.h>
-
-#include <unistd.h>
 #include <linux/can.h>
+#include <linux/can/raw.h>
+#include <net/if.h>
+#include <sys/ioctl.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 #include <cstring>
 #include <stdexcept>
 #include <string>
 
-namespace drivers
-{
-namespace socketcan
-{
+namespace drivers {
+namespace socketcan {
 
-int32_t bind_can_socket(const std::string & interface)
-{
+int32_t bind_can_socket(const std::string &interface) {
   if (interface.length() >= static_cast<std::string::size_type>(IFNAMSIZ)) {
     throw std::domain_error{"CAN interface name too long"};
   }
@@ -65,17 +61,16 @@ int32_t bind_can_socket(const std::string & interface)
   addr.can_ifindex = ifr.ifr_ifindex;
 
   // Bind address
-  //lint -save -e586 NOLINT This (c-style casts actually) is the idiomatic way to use sockaddr
+  // lint -save -e586 NOLINT This (c-style casts actually) is the idiomatic way to use sockaddr
   if (0 > bind(file_descriptor, reinterpret_cast<struct sockaddr *>(&addr), sizeof(addr))) {
     throw std::runtime_error{"Failed to bind CAN socket"};
   }
-  //lint -restore NOLINT
+  // lint -restore NOLINT
 
   return file_descriptor;
 }
 
-struct timeval to_timeval(const std::chrono::nanoseconds timeout) noexcept
-{
+struct timeval to_timeval(const std::chrono::nanoseconds timeout) noexcept {
   const auto count = timeout.count();
   constexpr auto BILLION = 1'000'000'000LL;
   struct timeval c_timeout;
@@ -85,8 +80,7 @@ struct timeval to_timeval(const std::chrono::nanoseconds timeout) noexcept
   return c_timeout;
 }
 
-fd_set single_set(int32_t file_descriptor) noexcept
-{
+fd_set single_set(int32_t file_descriptor) noexcept {
   fd_set descriptor_set;
   // TODO(c.ho) sort through all these MISRA errors...
   // lint -save -e9146 NOLINT

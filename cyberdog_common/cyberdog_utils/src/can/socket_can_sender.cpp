@@ -14,51 +14,42 @@
 //
 // Co-developed by Tier IV, Inc. and Apex.AI, Inc.
 
-#include "cyberdog_utils/can/socket_can_common.hpp"
 #include "cyberdog_utils/can/socket_can_sender.hpp"
 
-#include <unistd.h>  // for close()
+#include <linux/can.h>
 #include <sys/select.h>
 #include <sys/socket.h>
-#include <linux/can.h>
+#include <unistd.h>  // for close()
 
-#include <cstring>
 #include <chrono>
+#include <cstring>
 #include <stdexcept>
 #include <string>
 
-namespace drivers
-{
-namespace socketcan
-{
+#include "cyberdog_utils/can/socket_can_common.hpp"
+
+namespace drivers {
+namespace socketcan {
 
 ////////////////////////////////////////////////////////////////////////////////
-SocketCanSender::SocketCanSender(const std::string & interface, const CanId & default_id)
-: m_file_descriptor{bind_can_socket(interface)},
-  m_default_id{default_id}
-{
-}
+SocketCanSender::SocketCanSender(const std::string &interface, const CanId &default_id)
+    : m_file_descriptor{bind_can_socket(interface)}, m_default_id{default_id} {}
 
 ////////////////////////////////////////////////////////////////////////////////
-SocketCanSender::~SocketCanSender() noexcept
-{
+SocketCanSender::~SocketCanSender() noexcept {
   (void)close(m_file_descriptor);
   // I'm destructing--there's not much else I can do on an error
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-CanId SocketCanSender::default_id() const noexcept
-{
-  return m_default_id;
-}
+CanId SocketCanSender::default_id() const noexcept { return m_default_id; }
 
 ////////////////////////////////////////////////////////////////////////////////
 void SocketCanSender::send(
-  const void * const data,
-  const std::size_t length,
-  const CanId id,
-  const std::chrono::nanoseconds timeout) const
-{
+    const void *const data,
+    const std::size_t length,
+    const CanId id,
+    const std::chrono::nanoseconds timeout) const {
   if (length > MAX_DATA_LENGTH) {
     throw std::domain_error{"Size is too large to send via CAN"};
   }
@@ -67,16 +58,14 @@ void SocketCanSender::send(
 
 ////////////////////////////////////////////////////////////////////////////////
 void SocketCanSender::send(
-  const void * const data,
-  const std::size_t length,
-  const std::chrono::nanoseconds timeout) const
-{
+    const void *const data,
+    const std::size_t length,
+    const std::chrono::nanoseconds timeout) const {
   send(data, length, m_default_id, timeout);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void SocketCanSender::wait(const std::chrono::nanoseconds timeout) const
-{
+void SocketCanSender::wait(const std::chrono::nanoseconds timeout) const {
   if (decltype(timeout)::zero() < timeout) {
     auto c_timeout = to_timeval(timeout);
     auto write_set = single_set(m_file_descriptor);
@@ -96,11 +85,10 @@ void SocketCanSender::wait(const std::chrono::nanoseconds timeout) const
 
 ////////////////////////////////////////////////////////////////////////////////
 void SocketCanSender::send_impl(
-  const void * const data,
-  const std::size_t length,
-  const CanId id,
-  const std::chrono::nanoseconds timeout) const
-{
+    const void *const data,
+    const std::size_t length,
+    const CanId id,
+    const std::chrono::nanoseconds timeout) const {
   // Use select call on positive timeout
   wait(timeout);
   // Actually send the data
@@ -110,10 +98,8 @@ void SocketCanSender::send_impl(
   data_frame.can_dlc = static_cast<decltype(data_frame.can_dlc)>(length);
   // lint -e{586} NOLINT data_frame is a stack variable; guaranteed not to overlap
   (void)std::memcpy(static_cast<void *>(&data_frame.data[0U]), data, length);
-  if (write(
-      m_file_descriptor, &data_frame,
-      static_cast<int>(CAN_MTU)) != static_cast<int>(CAN_MTU))
-  {
+  if (write(m_file_descriptor, &data_frame, static_cast<int>(CAN_MTU)) !=
+      static_cast<int>(CAN_MTU)) {
     throw std::runtime_error{strerror(errno)};
   }
 }

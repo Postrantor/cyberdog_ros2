@@ -14,38 +14,33 @@
 //
 // Co-developed by Tier IV, Inc. and Apex.AI, Inc.
 
-#include "cyberdog_utils/can/socket_can_common.hpp"
 #include "cyberdog_utils/can/socket_can_receiver.hpp"
 
-#include <unistd.h>  // for close()
+#include <linux/can.h>
 #include <sys/select.h>
 #include <sys/socket.h>
-#include <linux/can.h>
+#include <unistd.h>  // for close()
 
 #include <cstring>
 #include <string>
 
-namespace drivers
-{
-namespace socketcan
-{
+#include "cyberdog_utils/can/socket_can_common.hpp"
+
+namespace drivers {
+namespace socketcan {
 
 ////////////////////////////////////////////////////////////////////////////////
-SocketCanReceiver::SocketCanReceiver(const std::string & interface)
-: m_file_descriptor{bind_can_socket(interface)}
-{
-}
+SocketCanReceiver::SocketCanReceiver(const std::string &interface)
+    : m_file_descriptor{bind_can_socket(interface)} {}
 
 ////////////////////////////////////////////////////////////////////////////////
-SocketCanReceiver::~SocketCanReceiver() noexcept
-{
+SocketCanReceiver::~SocketCanReceiver() noexcept {
   // Can't do anything on error; in fact generally shouldn't on close() error
   (void)close(m_file_descriptor);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void SocketCanReceiver::wait(const std::chrono::nanoseconds timeout) const
-{
+void SocketCanReceiver::wait(const std::chrono::nanoseconds timeout) const {
   if (decltype(timeout)::zero() < timeout) {
     auto c_timeout = to_timeval(timeout);
     auto read_set = single_set(m_file_descriptor);
@@ -53,7 +48,7 @@ void SocketCanReceiver::wait(const std::chrono::nanoseconds timeout) const
     if (0 == select(m_file_descriptor + 1, &read_set, NULL, NULL, &c_timeout)) {
       throw SocketCanTimeout{"CAN Receive Timeout"};
     }
-    //lint --e{9130, 1924, 9123, 9125, 1924, 9126} NOLINT
+    // lint --e{9130, 1924, 9123, 9125, 1924, 9126} NOLINT
     if (!FD_ISSET(m_file_descriptor, &read_set)) {
       throw SocketCanTimeout{"CAN Receive timeout"};
     }
@@ -63,7 +58,7 @@ void SocketCanReceiver::wait(const std::chrono::nanoseconds timeout) const
     if (0 == select(m_file_descriptor + 1, &read_set, NULL, NULL, NULL)) {
       throw SocketCanTimeout{"CAN Receive Timeout"};
     }
-    //lint --e{9130, 1924, 9123, 9125, 1924, 9126} NOLINT
+    // lint --e{9130, 1924, 9123, 9125, 1924, 9126} NOLINT
     if (!FD_ISSET(m_file_descriptor, &read_set)) {
       throw SocketCanTimeout{"CAN Receive timeout"};
     }
@@ -71,8 +66,7 @@ void SocketCanReceiver::wait(const std::chrono::nanoseconds timeout) const
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-CanId SocketCanReceiver::receive(void * const data, const std::chrono::nanoseconds timeout) const
-{
+CanId SocketCanReceiver::receive(void *const data, const std::chrono::nanoseconds timeout) const {
   wait(timeout);
   // Read
   struct can_frame frame;
